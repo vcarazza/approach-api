@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless REST API application for Approach Winners
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 60
+    Tracing: Active
+    MemorySize: 1024
+    Tags:
+      Project: Winners
+  Api:
+    Auth:
+      UsagePlan:
+        UsagePlanName: DailyUsagePlan
+        CreateUsagePlan: PER_API
+        Description: This will limit 5000 executions per day and throttle executions
+          on 10% of that.
+        Quota:
+          Limit: 5000
+          Period: DAY
+        Throttle:
+          BurstLimit: 20
+          RateLimit: 10
+Parameters:
+  VersionParam:
+    Type: String
+    Default: v1
+  StageNameParam:
+    Type: String
+    Default: prod
+Resources:
+  ApproachEndpointApi:
+    Type: AWS::Serverless::Api
+    MethodSettings:
+      DataTraceEnabled: true
+      MetricsEnabled: true
+      HttpMethod: '*'
+      ResourcePath:
+        Fn::Sub: ${VersionParam}/*
+      LoggingLevel: INFO
+    AccessLogSetting:
+      DestinationArn:
+        Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ApiAccessLogGroup}
+      Format: $context.identity.sourceIp $context.authorizer.claims.sub [$context.requestTime]
+        "$context.httpMethod $context.resourcePath $context.protocol" $context.status
+        $context.requestId $context.awsEndpointRequestId $context.xrayTraceId $context.responseLatency
+        $context.integrationLatency "$context.error.message"
+    Properties:
+      Name: ApproachEndpointApi
+      StageName:
+        Ref: StageNameParam
+      TracingEnabled: true
+      Cors:
+        AllowOrigin: '''*'''
+        AllowMethods: '''GET,OPTIONS'''
+        AllowHeaders: '''Content-Type,X-Amz-Date,X-Amz-Security-Token,Authorization,X-Api-Key,X-Requested-With,Accept,Access-Control-Allow-Methods,Access-Control-Allow-Origin,Access-Control-Allow-Headers'''
+  ApproachFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ApproachFunction
+      Handler: handler.list_subscriptions
+      Tracing: Active
+      Role: arn:aws:iam::992382506739:role/Approach-ReadGoogleSheetRole
+      Events:
+        GetItem:
+          Type: Api
+          Properties:
+            Path: /list
+            Method: GET
+            RestApiId:
+              Ref: ApproachEndpointApi
+    Metadata:
+      SamResourceId: ApproachFunction
+  ApiGatewayPushToCloudWatchRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Push logs to CloudWatch logs from API Gateway
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - apigateway.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/apigateway/AccessLog-${ApproachEndpointApi}
+      RetentionInDays: 365
+Outputs:
+  ApproachEndpointFunctionApi:
+    Description: API Gateway endpoint URL for Approach Arena Winners Prod stage
+    Value:
+      Fn::Sub: https://${ApproachEndpointApi}.execute-api.${AWS::Region}.amazonaws.com/{StageNameParam}
