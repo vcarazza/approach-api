@@ -1,5 +1,6 @@
 import json
 import boto3
+import re
 import logging
 
 import gspread
@@ -49,6 +50,13 @@ def make_response(status_code, body):
     return response
 
 
+def clean_headers(headers):
+    cleaned_headers = [
+        re.sub(r'^\s*REQUISITOS SOBRE O\s*', '', re.sub(r'\s*\(.*?\)\s*', '', header)).strip()
+        for header in headers
+    ]
+    return cleaned_headers
+
 def list_subscriptions(event, context):
     try:
         
@@ -64,7 +72,7 @@ def list_subscriptions(event, context):
         gsheet = gc.open_by_url('https://docs.google.com/spreadsheets/d/1gkyvW7UXqNRsc-_VW9DUz88FEzXNMmJTkeEGHKRKSqY/edit?resourcekey=&gid=222744022')
         spreadsheets = [spreadsheet.get_all_values() for spreadsheet in gsheet.worksheets()]
 
-        headers = [data.pop(0) for data in spreadsheets]
+        headers = [clean_headers(data.pop(0)) for data in spreadsheets]
         data = [dict(zip(headers[i], row)) for i in range(len(spreadsheets)) for row in spreadsheets[i]]
 
         # Convert to JSON

@@ -60,7 +60,7 @@ Resources:
   ApproachFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://approach/api-approach/1b0effe4b29b76e86ae595f550788a8c
+      CodeUri: s3://approach/api-approach/f8b351842def8ef408c9a2c686f271d5
       Handler: handler.list_subscriptions
       Tracing: Active
       Role: arn:aws:iam::992382506739:role/Approach-ReadGoogleSheetRole
