@@ -100,7 +100,7 @@ def list_subscriptions(event, context):
             age = calculate_age(birth_date, current_date)
             record['Idade'] = age
             cleaned_phone = clean_phone_number(record['TELEFONE'])
-            record['whatsapp'] = f"https://web.whatsapp.com/send/?1=pt_BR&phone={cleaned_phone}"
+            record['whatsapp'] = f"https://api.whatsapp.com/send?phone=55{cleaned_phone}"
             del record['DATA DE NASCIMENTO']
 
         # Convert to JSON
