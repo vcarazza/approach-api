@@ -9,4 +9,11 @@ manifest_hash = ""
 packagetype = "Zip"
 functions = ["ApproachFunction"]
 
-[layer_build_definitions]
+[layer_build_definitions.9688f323-5d34-414c-bda0-617e1695d62c]
+layer_name = "PythonLayer"
+codeuri = "C:\\Users\\Caraz\\arena winners\\approach-api\\src"
+build_method = "makefile"
+compatible_runtimes = ["python3.12"]
+architecture = "x86_64"
+manifest_hash = ""
+layer = "PythonLayer"

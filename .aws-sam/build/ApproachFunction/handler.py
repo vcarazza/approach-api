@@ -2,6 +2,7 @@ import json
 import boto3
 import re
 import logging
+from datetime import datetime
 
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -11,10 +12,8 @@ REGION_NAME = "us-east-1"
 SECRETS_NAME = "approach_arenawinners"
 
 def get_AWS_secrets():
-    # Create a Secrets Manager client
     session = boto3.Session()
     client = session.client(
-
         service_name='secretsmanager',
         region_name=REGION_NAME
     )
@@ -24,8 +23,6 @@ def get_AWS_secrets():
             SecretId=SECRETS_NAME
         )
     except ClientError as e:
-        # For a list of exceptions thrown, see
-        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
         raise e
 
     return json.loads(get_secret_value_response['SecretString'])
@@ -41,7 +38,7 @@ def make_response(status_code, body):
         'headers': {
             'Access-Control-Allow-Headers':
             'Content-Type,X-Amz-Date,X-Amz-Security-Token,Authorization,X-Api-Key,X-Requested-With,Accept,Access-Control-Allow-Methods,Access-Control-Allow-Origin,Access-Control-Allow-Headers',
-            'Access-Control-Allow-Methods': 'OPTIONS,GET',
+            'Access-Control-Allow-Methods': 'OPTIONS,GET,POST',
             'Access-Control-Allow-Credentials': True,
             'Access-Control-Allow-Origin': '*',
             'Content-Type': 'application/json'
@@ -57,11 +54,30 @@ def clean_headers(headers):
     ]
     return cleaned_headers
 
+# Function to calculate age from birth date
+def calculate_age(birth_date, current_date):
+    birth_date = datetime.strptime(birth_date, '%d/%m/%Y')
+    age = current_date.year - birth_date.year - ((current_date.month, current_date.day) < (birth_date.month, birth_date.day))
+    return age
+
+# Function to clean and format phone number
+def clean_phone_number(phone_number):
+    return re.sub(r'\D', '', phone_number)
+
+
 def list_subscriptions(event, context):
     try:
-        
         # Retrieve secrets
         SECRETS = get_AWS_secrets()
+        stored_password = SECRETS.get('password')
+        
+        # Retrieve password from the event
+        body = json.loads(event['body'])
+        provided_password = body.get('password')
+        
+        if provided_password != stored_password:
+            return make_response(401, {"error": "Senha incorreta!"})
+        
         google_secrets = json.loads(SECRETS.get('google'))
         
         scope = ['https://spreadsheets.google.com/feeds',
@@ -74,6 +90,18 @@ def list_subscriptions(event, context):
 
         headers = [clean_headers(data.pop(0)) for data in spreadsheets]
         data = [dict(zip(headers[i], row)) for i in range(len(spreadsheets)) for row in spreadsheets[i]]
+        
+        # Current date (today's date)
+        current_date = datetime.today()
+
+        # Add 'age' to each record
+        for record in data:
+            birth_date = record['DATA DE NASCIMENTO']
+            age = calculate_age(birth_date, current_date)
+            record['Idade'] = age
+            cleaned_phone = clean_phone_number(record['TELEFONE'])
+            record['whatsapp'] = f"https://web.whatsapp.com/send/?1=pt_BR&phone={cleaned_phone}"
+            del record['DATA DE NASCIMENTO']
 
         # Convert to JSON
         data_json = json.dumps(data)
@@ -85,4 +113,3 @@ def list_subscriptions(event, context):
 
 if __name__ == '__main__':
     list_subscriptions(event=None,context=None)
-
