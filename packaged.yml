@@ -59,7 +59,7 @@ Resources:
   PythonLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
-      ContentUri: s3://approach/api-approach/faeed3ee9e72e228f1f721471bda5129
+      ContentUri: s3://approach/api-approach/c2526d296ddac6dfec46eb13f4dcd1ea
       CompatibleRuntimes:
       - python3.12
     Metadata:
@@ -68,7 +68,7 @@ Resources:
   ApproachFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://approach/api-approach/5ea327bf2846e7ad05352c93bb7e7d56
+      CodeUri: s3://approach/api-approach/c0f27805cbf42f7473b951b900eb667e
       Handler: handler.list_subscriptions
       Tracing: Active
       Role: arn:aws:iam::992382506739:role/Approach-ReadGoogleSheetRole

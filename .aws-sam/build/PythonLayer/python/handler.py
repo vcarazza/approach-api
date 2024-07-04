@@ -104,6 +104,9 @@ def list_subscriptions(event, context):
             del record['DATA DE NASCIMENTO']
 
         # Convert to JSON
+        # Sort data by 'NOME'
+        data.sort(key=lambda x: x['NOME'])
+
         data_json = json.dumps(data)
 
         return make_response(200, {'data': data_json})
